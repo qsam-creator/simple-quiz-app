@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>تسجيل حساب جديد</title>
+    <style>
+        body { font-family: Arial; background: #f3f4f9; }
+        .container { width: 400px; margin: 60px auto; background: #fff; padding: 30px; border-radius: 14px; box-shadow: 0 2px 14px #7772; }
+        h1 { text-align: center; color: #4b54a3; }
+        .form-group { margin-bottom: 16px; }
+        label { display: block; margin-bottom: 6px; color: #666; }
+        input { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #ccc; }
+        .btn { width: 100%; padding: 13px; border-radius: 9px; background: #667eea; color: #fff; border: none; font-size: 15px; margin-top: 12px; }
+        .btn:hover { background: #4252cd; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>تسجيل حساب جديد</h1>
+        <form method="POST">
+            <div class="form-group">
+                <label>اسم المستخدم</label>
+                <input type="text" name="username" required>
+            </div>
+            <div class="form-group">
+                <label>كلمة المرور</label>
+                <input type="password" name="password" required>
+            </div>
+            <button type="submit" class="btn">تسجيل</button>
+        </form>
+        <p style="text-align:center;margin-top:10px;">لديك حساب؟ <a href="/login">دخول</a></p>
+    </div>
+</body>
+</html>
