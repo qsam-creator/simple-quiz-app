@@ -1,5 +1,5 @@
 from flask import Flask, render_template, request, redirect, url_for, flash
-from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
+from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 import os
 
 app = Flask(__name__)
@@ -10,19 +10,20 @@ login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
 
-# مستخدم تجريبي بسيط (بدون قاعدة بيانات الآن)
+# نموذج مستخدم مبسط (دون قاعدة بيانات حقيقية)
 class User(UserMixin):
     def __init__(self, id, username):
         self.id = id
         self.username = username
 
-# قائمة مستخدمين تجريبية
+# تخزين المستخدمين في الذاكرة فقط
 users = {
     'admin': User(1, 'admin')
 }
 passwords = {
     'admin': 'password123'
 }
+next_user_id = 2
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -36,13 +37,33 @@ def load_user(user_id):
 def home():
     return render_template('home.html')
 
+# صفحة التسجيل
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    global next_user_id
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        if not username or not password:
+            flash('يرجى إدخال كل المعلومات', 'error')
+            return render_template('register.html')
+        if username in users:
+            flash('اسم المستخدم مسجّل مسبقاً', 'error')
+            return render_template('register.html')
+        user = User(next_user_id, username)
+        users[username] = user
+        passwords[username] = password
+        next_user_id += 1
+        flash('تم إنشاء الحساب! يمكنك تسجيل الدخول الآن', 'success')
+        return redirect(url_for('login'))
+    return render_template('register.html')
+
 # صفحة تسجيل الدخول
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
-        
         if username in users and passwords.get(username) == password:
             user = users[username]
             login_user(user)
@@ -50,10 +71,9 @@ def login():
             return redirect(url_for('dashboard'))
         else:
             flash('اسم المستخدم أو كلمة المرور غير صحيحة', 'error')
-    
     return render_template('login.html')
 
-# صفحة لوحة التحكم (بعد تسجيل الدخول)
+# لوحة التحكم
 @app.route('/dashboard')
 @login_required
 def dashboard():
