@@ -1,36 +1,35 @@
 from flask import Flask, render_template, request, redirect, url_for, flash
+from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
+from werkzeug.security import generate_password_hash, check_password_hash
 import os
 
 app = Flask(__name__)
 app.secret_key = 'my-secret-key-123'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///users.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+db = SQLAlchemy(app)
+
+# نموذج المستخدم لقواعد البيانات
+class User(UserMixin, db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), unique=True, nullable=False)
+    password_hash = db.Column(db.String(128), nullable=False)
+
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+    def check_password(self, password):
+        return check_password_hash(self.password_hash, password)
 
 # إعداد نظام تسجيل الدخول
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
 
-# نموذج مستخدم مبسط (دون قاعدة بيانات حقيقية)
-class User(UserMixin):
-    def __init__(self, id, username):
-        self.id = id
-        self.username = username
-
-# تخزين المستخدمين في الذاكرة فقط
-users = {
-    'admin': User(1, 'admin')
-}
-passwords = {
-    'admin': 'password123'
-}
-next_user_id = 2
-
 @login_manager.user_loader
 def load_user(user_id):
-    for user in users.values():
-        if str(user.id) == user_id:
-            return user
-    return None
+    return User.query.get(int(user_id))
 
 # الصفحة الرئيسية
 @app.route('/')
@@ -40,20 +39,19 @@ def home():
 # صفحة التسجيل
 @app.route('/register', methods=['GET', 'POST'])
 def register():
-    global next_user_id
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
         if not username or not password:
             flash('يرجى إدخال كل المعلومات', 'error')
             return render_template('register.html')
-        if username in users:
+        if User.query.filter_by(username=username).first():
             flash('اسم المستخدم مسجّل مسبقاً', 'error')
             return render_template('register.html')
-        user = User(next_user_id, username)
-        users[username] = user
-        passwords[username] = password
-        next_user_id += 1
+        user = User(username=username)
+        user.set_password(password)
+        db.session.add(user)
+        db.session.commit()
         flash('تم إنشاء الحساب! يمكنك تسجيل الدخول الآن', 'success')
         return redirect(url_for('login'))
     return render_template('register.html')
@@ -64,8 +62,8 @@ def login():
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
-        if username in users and passwords.get(username) == password:
-            user = users[username]
+        user = User.query.filter_by(username=username).first()
+        if user and user.check_password(password):
             login_user(user)
             flash('تم تسجيل الدخول بنجاح!', 'success')
             return redirect(url_for('dashboard'))
@@ -86,6 +84,11 @@ def logout():
     logout_user()
     flash('تم تسجيل الخروج', 'info')
     return redirect(url_for('home'))
+
+# إنشاء قاعدة البيانات أو تحديثها تلقائيًا
+@app.before_first_request
+def create_tables():
+    db.create_all()
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
